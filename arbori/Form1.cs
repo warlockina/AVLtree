@@ -5,18 +5,17 @@ namespace arbori
 {
     public partial class Form1 : Form
     {
+        private int caut = -1;
         public class AVLnode
         {
-            public int val;
+            public int val, h;
             public AVLnode st, dr; //? - can be null
-            public int h;
             public AVLnode(int a) { val = a; h = 1; }
 
-            //insert/delete/rotate/balance
         }
         public class AVLtree
         {
-            public AVLnode r; //radacina
+            public AVLnode radacina; //radacina
             private int height(AVLnode nod)
             {
                 return (nod != null ? nod.h : 0);
@@ -34,60 +33,59 @@ namespace arbori
                 if (nod == null) return 0;
                 return height(nod.st) - height(nod.dr);
             }
-
+            public int getBF(AVLnode nod)
+            {
+                return (nod.st != null ? nod.st.h : 0) - (nod.dr != null ? nod.dr.h : 0);
+            }
             public void adaug(int val)
             {
                 AVLnode nou = new AVLnode(val);
-                if (r == null) r = nou;
-                else r = inserare(r, nou);
+                if (radacina == null) radacina = new AVLnode(val);
+                else radacina = inserare(radacina, nou);
             }
 
-            private AVLnode inserare(AVLnode current, AVLnode nod)
+            private AVLnode inserare(AVLnode curent, AVLnode nod)
             {
-                if (current == null)
-                {
-                    current = nod;
-                    return current;
-                }
+                if (curent == null)
+                    return nod;
+                else if (nod.val < curent.val)
+                    curent.st = inserare(curent.st, nod);
+                else if (nod.val > curent.val)
+                    curent.dr = inserare(curent.dr, nod);
 
-                else if (nod.val < current.val)
-                    current.st = inserare(current.st, nod);
-                else if (nod.val > current.val)
-                    current.dr = inserare(current.dr, nod);
-
-                updateHeight(current);
-                current = balanceTree(current);
-                return current;
+                updateHeight(curent);
+                curent = balanceTree(curent);
+                return curent;
             }
 
-            private AVLnode balanceTree(AVLnode current)
+            private AVLnode balanceTree(AVLnode nod)
             {
-                int bf = BF(current);
+                int bf = BF(nod);
                 if (bf > 1) // caz L... (left heavy)
                 {
-                    if (BF(current.st) > 0) current = rotateLL(current); //left heavy
-                    else current = rotateLR(current); //right heavy
+                    if (BF(nod.st) > 0) nod = rotateLL(nod); //left heavy
+                    else nod = rotateLR(nod); //right heavy
                 }
                 else if (bf < -1) // caz R... (right heavy)
                 {
-                    if (BF(current.dr) > 0) current = rotateRL(current); //left heavy
-                    else current = rotateRR(current); //right heavy
+                    if (BF(nod.dr) > 0) nod = rotateRL(nod); //left heavy
+                    else nod = rotateRR(nod); //right heavy
                 }
 
-                updateHeight(current);
-                return current;
+                updateHeight(nod);
+                return nod;
             }
 
             public void stergere(int val)
             {
-                r = stergere(r, val);
+                radacina = stergere(radacina, val);
             }
 
             private AVLnode stergere(AVLnode nod, int val)
             {
                 AVLnode tata;
                 if (nod == null) return null;
-                //o iau la stanga
+                //o iau la stanga si balansez
                 if (val < nod.val)
                 {
                     nod.st = stergere(nod.st, val);
@@ -97,7 +95,7 @@ namespace arbori
                         else nod = rotateRL(nod);
                     }
                 }
-                //o iau la dreapta
+                //o iau la dreapta si balansez
                 else if (val > nod.val)
                 {
                     nod.dr = stergere(nod.dr, val);
@@ -126,7 +124,7 @@ namespace arbori
                 }
                 return nod;
             }
-
+            //rotation cases
             private AVLnode rotateRR(AVLnode tata)
             {
                 AVLnode pivot = tata.dr;
@@ -172,16 +170,24 @@ namespace arbori
 
         private void treePanel_Paint(object sender, PaintEventArgs e)
         {
-            if (arbore.r == null) return;
+            if (arbore.radacina == null) return;
             e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-            drawNode(e.Graphics, arbore.r, treePanel.Width / 2, 40, treePanel.Width / 4);
+
+            e.Graphics.DrawString($"Inaltime: {arbore.radacina.h - 1}", Font, Brushes.Black, 10, 10);
+            e.Graphics.DrawString($"Noduri: {numarNoduri(arbore.radacina)}", Font, Brushes.Black, 10, 25);
+            drawNode(e.Graphics, arbore.radacina, treePanel.Width / 2, 40, treePanel.Width / 4);
         }
 
+        private int numarNoduri(AVLnode nod)
+        {
+            if (nod == null) return 0;
+            return 1 + numarNoduri(nod.st) + numarNoduri(nod.dr);
+        }
         private void drawNode(Graphics g, AVLnode nod, int x, int y, int offset)
         {
-            int raza = 20;
-            //muchii
-            if(nod.st != null)
+            int raza = 25;
+            //muchii si urm noduri
+            if (nod.st != null)
             {
                 g.DrawLine(Pens.Black, x, y, x - offset, y + 60);
                 drawNode(g, nod.st, x - offset, y + 60, offset / 2);
@@ -192,19 +198,21 @@ namespace arbori
                 drawNode(g, nod.dr, x + offset, y + 60, offset / 2);
             }
 
+            Brush fill = (nod.val == caut) ? Brushes.Goldenrod : Brushes.SteelBlue;
             //noduri
-            g.FillEllipse(Brushes.SteelBlue, x - raza, y - raza, raza * 2, raza * 2);
+            g.FillEllipse(fill, x - raza, y - raza, raza * 2, raza * 2);
             g.DrawEllipse(Pens.Black, x - raza, y - raza, raza * 2, raza * 2);
 
-            string label = nod.val.ToString();
-            SizeF size = g.MeasureString(label, Font);
+            string label = $"{nod.val} / {arbore.getBF(nod)}";
+
+            SizeF size = g.MeasureString(label, Font); //to center label
             g.DrawString(label, Font, Brushes.White, x - size.Width / 2, y - size.Height / 2);
 
         }
 
         private void btnInsert_Click(object sender, EventArgs e)
         {
-            if(int.TryParse(txtValue.Text, out int val))
+            if (int.TryParse(txtValue.Text, out int val))
             {
                 arbore.adaug(val);
                 treePanel.Invalidate(); //repaint
@@ -218,10 +226,10 @@ namespace arbori
 
         private void btnDelete_Click(object sender, EventArgs e)
         {
-            if(int.TryParse(txtValue.Text, out int val))
+            if (int.TryParse(txtValue.Text, out int val))
             {
                 arbore.stergere(val);
-                
+
                 treePanel.Invalidate();//repaint
                 txtValue.Clear();
             }
@@ -231,6 +239,29 @@ namespace arbori
             }
         }
 
+        private void btnClear_Click(object sender, EventArgs e)
+        {
+            arbore.radacina = null;
+            caut = -1;
+            treePanel.Invalidate();
+        }
 
+        private void btnFind_Click(object sender, EventArgs e)
+        {
+            if (int.TryParse(txtValue.Text, out int val))
+            {
+                caut = val;
+                treePanel.Invalidate();
+            }
+        }
+
+        private void btnRandom_Click(object sender, EventArgs e)
+        {
+            arbore.radacina = null;
+            var rand = new Random();
+            for (int i = 0; i < 10; i++)
+                arbore.adaug(rand.Next(1, 100));
+            treePanel.Invalidate();
+        }
     }
 }
